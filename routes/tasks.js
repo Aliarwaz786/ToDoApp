@@ -30,6 +30,7 @@ router.post('/add-tasks', function (req, res, next) {
     res.status(200);
   }).catch(err => {
     res.status(500);
+
     res.redirect('/tasks');
     res.end();
   });
