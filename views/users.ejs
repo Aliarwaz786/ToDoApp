@@ -54,7 +54,7 @@
                                 <%= user.email %>
                             </td>
                             <td>
-                                <button onclick="goToTasks(user.email)" class="btn btn-primary">See tasks</button>
+                                <button onclick="goToTasks('<%= user.id %>')" class="btn btn-primary">See tasks</button>
                             </td>
                         </tr>
                         <% }) %>
@@ -66,8 +66,7 @@
 </body>
 <script>
     function goToTasks(userId) {
-        console.log(userId);
-        window.location.href = '/tasks';
+        window.location.href = `/tasks/${userId}`;
     }
 </script>
 

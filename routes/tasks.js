@@ -2,55 +2,75 @@ var express = require('express');
 var router = express.Router();
 const fs = require('fs');
 const xlsx = require('xlsx');
+const path = require('path');
 
-let taskController = require('../controllers/task.controllers');
-let tasks = []
+let Task = require('../models/tasks');
+let User = require('../models/users');
 
-/* GET All Tasks */
-router.get('/tasks', function (req, res, next) {
-  taskController.getTasks.then((data) => {
+// Get task by user id
+router.get('/tasks/:userid?', async function (req, res, next) {
+  try {
+    let allUsers = await User.query();
+    let tasks;
+    if (req.params.userid) {
+      tasks = await Task.query().where('UserID', req.params.userid);
+    } else {
+      tasks = await Task.query();
+    }
     res.status(200);
-    tasks = data;
-    res.render('tasks', { tasksList: data });
-  }).catch((err) => {
-    res.status(500)
-    res.end()
-  });
+    res.render('tasks', { tasksList: tasks, usersList: allUsers });
+  } catch (err) {
+    console.log(err);
+    res.status(500);
+    res.end();
+  }
 });
 
 /* Add Task */
-router.post('/add-tasks', function (req, res, next) {
+router.post('/add-tasks', async function (req, res, next) {
   let data = {
     TaskName: req.body.TaskName,
     TaskType: req.body.TaskType,
-    UserID: 1
+    UserID: req.body.userId
   };
-  taskController.addTask(data).then(data => {
-    res.redirect('/tasks');
-    res.status(200);
-  }).catch(err => {
-    res.status(500);
-
-    res.redirect('/tasks');
-    res.end();
-  });
+  try {
+    const newTask = await Task.query().insert(data);
+    return res.redirect(`/tasks/${req.body.userId}`);
+  } catch (error) {
+    console.error('Error posting data:', error);
+  }
 });
 
 // Download data as excel
 router.get('/download', (req, res) => {
+  const dataArray = tasks.map(row => [row.TaskName, row.TaskType, row.TaskType]);
+  console.log("Excel ", dataArray);
+  const ws = xlsx.utils.aoa_to_sheet([
+    ['TaskName', 'TaskType', 'TaskType'],
+    ...dataArray
+  ]);
+
+  // Create a new workbook
   const wb = xlsx.utils.book_new();
-  console.log("Excel ", tasks);
-  const ws = xlsx.utils.aoa_to_sheet(tasks);
+  xlsx.utils.book_append_sheet(wb, ws, 'Sheet 1');
 
+  // Generate a temp file path
+  const directoryPath = path.join(__dirname, 'temp');
+  const filePath = path.join(directoryPath, 'data.xlsx');
 
-  xlsx.utils.book_append_sheet(wb, ws, 'Sheet1');
+  // Ensure the directory exists
+  if (!fs.existsSync(directoryPath)) {
+    fs.mkdirSync(directoryPath);
+  }
 
-  const buffer = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
+  // Write the workbook to the file
+  xlsx.writeFile(wb, filePath);
 
-  res.set('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-  res.set('Content-Disposition', 'attachment; filename="table.xlsx"');
-
-  res.send(buffer);
+  // Send the file as downloadable attachment
+  res.download(filePath, 'data.xlsx', () => {
+    // Delete the temp file after download
+    fs.unlinkSync(filePath);
+  });
   res.redirect('/tasks');
 });
 

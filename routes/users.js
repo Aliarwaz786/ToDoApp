@@ -1,29 +1,30 @@
 var express = require('express');
 var router = express.Router();
 
+const User = require('../models/users');
 let userController = require('../controllers/user.controllers');
 
 // Get All Users
-router.get('/', function (req, res, next) {
-  userController.getUsers.then((users) => {
-    res.status(200);
-    res.render('users', { usersList: users });
-  }).catch((err) => {
-    res.status(500)
-    res.end()
-  });
+router.get('/', async function (req, res, next) {
+  try {
+    const users = await User.query();
+    return res.render('users', { usersList: users });
+  } catch (err) {
+    console.log(err);
+    res.status(500);
+    res.end();
+  }
 });
 
 // Add User
-router.post('/add-user', function (req, res, next) {
-  userController.addUser(req.body).then(data => {
-    res.redirect('/');
-    res.status(200);
-  }).catch(err => {
+router.post('/add-user', async function (req, res, next) {
+  try {
+    const data = await userController.addUser(req.body);
+    return res.redirect('/');
+  } catch (err) {
     res.status(500);
-    res.redirect('/');
-    res.end();
-  });
+    return res.redirect('/');
+  }
 });
 
 module.exports = router;
